@@ -1,6 +1,9 @@
 application:
   subdomain: semaphore
   multi_instance: false
+  # Semaphore UI has its own login.
+  public_path:
+    - /
   upstreams:
     - location: /package-licenses/
       backend: file:///lzcapp/pkg/content/licenses/
@@ -49,7 +52,8 @@ usage: |
     卸载会一并删除，请定期备份。
   - 没有内置口令：管理员账号密码来自安装参数，密码默认随机生成。
   - 访问密钥用平台稳定密钥加密存储，每个部署不同。
-  - 应用经懒猫入口鉴权访问。
+  - 应用直接对外开放，由 Semaphore UI 自己的登录页鉴权：
+    自带账号体系的服务再套一层平台鉴权会导致重复登录，所以用 public_path。
 
   说明：
   - 单容器 + 内置 SQLite，不需要额外数据库。
