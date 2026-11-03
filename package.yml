@@ -1,0 +1,18 @@
+package: community.lazycat.app.semaphore
+name: Semaphore UI
+version: 0.0.0
+description: "Web UI for Ansible playbooks, Terraform and Bash scripts: run and schedule tasks from a browser."
+min_os_version: "1.5.0"
+homepage: https://semaphoreui.com/
+author: Semaphore UI
+license: MIT
+permissions:
+  required:
+    - net.internet
+locales:
+  zh:
+    name: Semaphore UI
+    description: "Ansible / Terraform / Shell 脚本的 Web 运行界面，浏览器里跑任务、排计划。"
+  en:
+    name: Semaphore UI
+    description: "Web UI for Ansible playbooks, Terraform and Bash scripts: run and schedule tasks from a browser."

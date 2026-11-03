@@ -1,0 +1,62 @@
+application:
+  subdomain: semaphore
+  multi_instance: false
+  upstreams:
+    - location: /package-licenses/
+      backend: file:///lzcapp/pkg/content/licenses/
+    - location: /
+      backend: http://semaphore:3000/
+
+services:
+  semaphore:
+    # upstream: semaphoreui/semaphore:v2.19.17
+    image: docker.1ms.run/semaphoreui/semaphore:v2.19.17
+    environment:
+      # The wrapper runs `semaphore setup` once, the first time
+      # /etc/semaphore/config.json is missing, and seeds this admin from it.
+      # Later restarts see the config file and skip setup, so this runs once.
+      - SEMAPHORE_ADMIN={{ .U.admin_username }}
+      - |-
+        SEMAPHORE_ADMIN_PASSWORD={{ .U.admin_password }}
+      - SEMAPHORE_ADMIN_EMAIL={{ .U.admin_email }}
+      - SEMAPHORE_ADMIN_NAME=Administrator
+      # SQLite keeps this a single container; the wrapper defaults to mysql,
+      # so the dialect has to be explicit.
+      - SEMAPHORE_DB_DIALECT=sqlite
+      - SEMAPHORE_DB_PATH=/var/lib/semaphore
+      # Bound to the ingress hostname so generated links and webhooks resolve.
+      - |-
+        SEMAPHORE_WEB_ROOT=https://{{ .S.AppDomain }}
+      - SEMAPHORE_ACCESS_KEY_ENCRYPTION={{ stable_secret "semaphore_access_key" | replace "\r" "" | replace "\n" "" }}
+      - TZ=Asia/Shanghai
+    binds:
+      # SQLite database, task artifacts and the generated config.json
+      - /lzcapp/var/semaphore:/var/lib/semaphore
+      - /lzcapp/var/semaphore-config:/etc/semaphore
+
+usage: |
+  Semaphore UI 是 Ansible、Terraform 和 Shell 脚本的 Web 运行界面。把 playbook 和仓库接进来，就能在浏览器里点一下跑任务、看实时日志、排定时计划，不用记命令行。
+
+  使用方法：
+  1. 打开应用，用安装时设置的管理员账号登录（用户名和密码都在安装参数里）。
+  2. 新建 Project，在 Key Store 里加 SSH 密钥或登录凭据。
+  3. 加 Repository（Git 地址），再建 Task Template 指向要跑的 playbook，
+     选好 Inventory 和凭据，保存后点 Run。
+  4. 也可以给模板排 cron 计划，让它定时执行。
+
+  数据与安全：
+  - 数据库、任务产物和配置都在 /lzcapp/var/semaphore 与 /lzcapp/var/semaphore-config，
+    卸载会一并删除，请定期备份。
+  - 没有内置口令：管理员账号密码来自安装参数，密码默认随机生成。
+  - 访问密钥用平台稳定密钥加密存储，每个部署不同。
+  - 应用经懒猫入口鉴权访问。
+
+  说明：
+  - 单容器 + 内置 SQLite，不需要额外数据库。
+  - **任务在容器内执行**，只能操作容器里能看到的东西：跑 Ansible 可以连外网主机，
+    但不能管理懒猫宿主机或其他容器（没有挂 docker socket，也没开特权）。
+    想要更强的执行能力，请另建带 runner 的部署。
+  - 首次启动要初始化数据库，打开可能需要等十几秒。
+  - 未配置邮件与 LDAP，邮件通知和域账号登录不可用。
+  - 未做真机验证：管理员登录、建 Project、跑任务以及重启后数据留存
+    均未在设备上实测。
